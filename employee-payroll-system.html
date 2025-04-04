@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Payroll System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease-in-out;
+            width: 90%;
+            max-width: 400px;
+            z-index: 1000;
+        }
+        .popup.show {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .scrollable-table {
+            max-height: 472px;
+            overflow-y: auto;
+            border-radius: 10px;
+        }
+        .image-slider {
+            position: relative;
+            margin: 20px auto;
+            width: 100%;
+            max-width: 750px;
+            height: 300px;
+            overflow: hidden;
+        }
+        .image-slider img {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            position: absolute;
+            top: 0;
+            left: 100%;
+            object-fit: cover;
+        }
+        .image-slider img.active {
+            left: 0;
+        }
+        .company-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: block;
+        }
+        table {
+            border-radius: 10px;
+            overflow: hidden;
+            width: 100%;
+        }
+        .bg-blur {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            background-color: #f9f9f9;
+            color: #000;
+            padding: 10px;
+        }
+        .main-container {
+            flex-direction: column;
+        }
+        .left-container,
+        .right-container {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        @media (min-width: 768px) {
+            .main-container {
+                flex-direction: row;
+            }
+            .left-container,
+            .right-container {
+                width: 50%;
+            }
+            .company-logo {
+                width: 150px;
+                height: 150px;
+                margin-right: 50px;
+            }
+            .image-slider {
+                height: 500px;
+            }
+            .popup {
+                width: 20%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.875rem;
+            }
+            .table td, .table th {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+            .text-2xl {
+                font-size: 1.5rem;
+            }
+            .image-slider {
+                height: 240px;
+            }
+            .image-slider img {
+                height: 220px;
+                width: 100%;
+                object-fit: cover;
+            }
+            .image-slider-container {
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex main-container">
+        <div class="left-container">
+            <div class="bg-blur p-4 rounded-lg shadow-lg mb-6">
+                <div class="flex flex-wrap justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold hidden md:block">Employees Payroll</h2>
+                    <button onclick="resetEmployeeNumber()" class="btn btn-warning mt-2 w-full md:w-auto hidden md:block">Reset Employee Number</button>
+                    <div class="flex items-center w-full md:hidden">
+                        <h2 class="text-2xl font-bold flex-grow">Employees Payroll</h2>
+                        <button onclick="resetEmployeeNumber()" class="btn btn-warning ml-2"><i class="bi bi-arrow-clockwise"></i></button>
+                    </div>
+                </div>
+                <form id="employeeForm" class="space-y-4">
+                    <input type="text" id="employeeId" class="form-control" readonly>
+                    <input type="text" id="name" placeholder="Employee Name" class="form-control" required>
+                    <input type="text" id="designation" placeholder="Designation" class="form-control" required>
+                    <input type="number" id="basicSalary" placeholder="₹ Basic Salary" class="form-control" required>
+                    <input type="number" id="netSalary" placeholder="₹ Net Salary" class="form-control" readonly>
+                    <button type="submit" class="btn btn-primary w-full">Submit</button>
+                </form>
+                <p id="message" class="text-center mt-3 text-green-600 font-semibold"></p>
+            </div>
+            <div class="bg-blur p-4 rounded-lg shadow-lg scrollable-table h-[calc(100vh-200px)]">
+                <div class="mb-4 flex flex-wrap justify-between items-center">
+                    <span class="font-bold text-xl">Entry List</span>
+                    <div class="mt-2 w-full md:w-auto flex gap-2">
+                        <button onclick="exportToCSV()" class="btn btn-success w-full md:w-auto">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Export to CSV
+                        </button>
+                        <button onclick="exportToPDF()" class="btn btn-danger w-full md:w-auto">
+                            <i class="bi bi-file-earmark-pdf"></i> Export to PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="d-none d-md-table-cell">ID</th>
+                                <th>Name</th>
+                                <th class="d-none d-md-table-cell">Designation</th>
+                                <th class="d-none d-md-table-cell">Net Salary</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeeTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="right-container">
+            <div class="bg-blur p-4 rounded-lg shadow-lg mb-6">
+                <h2 class="text-2xl font-bold mb-4 text-center">Company Details</h2>
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <div class="text-left mb-4">
+                        <p><strong>Company Name:</strong> Ui Creation</p>
+                        <p><strong>Address:</strong> Hydrabad, Telangana, India</p>
+                        <p><strong>Contact:</strong> +91 94091XXXXX</p>
+                        <p><strong>Email:</strong> bhavsarneev09@gmail.com</p>
+                        <a href="https://animated-3d-portfolio-one.vercel.app/"><p><strong>Website:</strong> <span class="animated-text">click me</span></p></a>
+                    </div>
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT-JFaPvbY3Do7zaNfoYGI749IYy6x2tQdMpA&s" alt="Company Logo" class="company-logo">
+                </div>
+            </div>
+            <div class="bg-blur p-4 rounded-lg shadow-lg image-slider-container">
+                <h2 class="text-2xl font-bold mb-4 text-center">Image Slider</h2>
+                <div class="image-slider">
+                    <img src="images/porfolio.png" alt="Image 1" class="active">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="popup" class="popup">
+        <span onclick="closePopup()" class="close-icon">&times;</span>
+        <p><strong>ID:</strong> <span id="popupId"></span></p>
+        <p><strong>Name:</strong> <span id="popupName"></span></p>
+        <p><strong>Designation:</strong> <span id="popupDesignation"></span></p>
+        <p><strong>Basic Salary:</strong> <span id="popupBasicSalary"></span></p>
+        <p><strong>Net Salary:</strong> <span id="popupNetSalary"></span></p>
+    </div>
+    <style>
+        #popup {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.8);
+            transition: all 0.3s ease-in-out;
+        }
+        #popup.show {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+        }
+        @media (min-width: 769px) {
+            #popup {
+                top: auto !important;
+                bottom: 20px !important;
+                left: auto !important;
+                right: 20px !important;
+                transform: scale(0.8) !important;
+                max-width: 350px;
+            }
+            #popup.show {
+                transform: scale(1) !important;
+            }
+        }
+        @media (max-width: 768px) {
+            #popup {
+                top: 0 !important;
+                transform: translate(-50%, -20px) scale(0.8) !important;
+                margin-top: 20px;
+                max-height: 90vh;
+                overflow-y: auto;
+                background-color: #ffffff;
+            }
+            #popup.show {
+                transform: translate(-50%, 0) scale(1) !important;
+            }
+        }
+        .close-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            color: #ff5c5c;
+            cursor: pointer;
+            transition: transform 0.2s, color 0.2s;
+            opacity: 0;
+            animation: fadeIn 0.3s ease-in-out 0.2s forwards;
+        }
+        .close-icon:hover {
+            transform: scale(1.2) rotate(90deg);
+            color: #ff1a1a;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        #popup p {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: slideUp 0.3s ease-in-out forwards;
+        }
+        #popup p:nth-child(2) { animation-delay: 0.1s; }
+        #popup p:nth-child(3) { animation-delay: 0.2s; }
+        #popup p:nth-child(4) { animation-delay: 0.3s; }
+        #popup p:nth-child(5) { animation-delay: 0.4s; }
+        #popup p:nth-child(6) { animation-delay: 0.5s; }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <script>
+        let employeeIdCounter = parseInt(localStorage.getItem('employeeIdCounter')) || 101;
+        document.getElementById('employeeId').value = `NEEV${employeeIdCounter}`;
+        let editingIndex = null;
+
+        $(document).ready(function() {
+            loadTable();
+
+            $('#basicSalary').on('input', function() {
+                let basicSalary = parseFloat($(this).val()) || 0;
+                let netSalary = basicSalary - (basicSalary * 0.1);
+                $('#netSalary').val(netSalary.toFixed(2));
+            });
+
+            $('#employeeForm').submit(function(event) {
+                event.preventDefault();
+                let id = $('#employeeId').val();
+                let name = $('#name').val();
+                let designation = $('#designation').val();
+                let basicSalary = $('#basicSalary').val();
+                let netSalary = $('#netSalary').val();
+                
+                if (name && designation && basicSalary && netSalary) {
+                    let employees = JSON.parse(localStorage.getItem('employees')) || [];
+                    
+                    if (editingIndex !== null) {
+                        employees[editingIndex] = { id, name, designation, basicSalary, netSalary };
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Updated!',
+                            text: 'Employee data successfully updated!',
+                            confirmButtonText: 'OK'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                $('#name').focus();
+                            }
+                        });
+                    } else {
+                        while (employees.some(emp => emp.id === id)) {
+                            employeeIdCounter++;
+                            id = `NEEV${employeeIdCounter}`;
+                            document.getElementById('employeeId').value = id;
+                        }
+                        employees.push({ id, name, designation, basicSalary, netSalary });
+                        employeeIdCounter++;
+                        localStorage.setItem('employeeIdCounter', employeeIdCounter);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Data successfully added!',
+                            confirmButtonText: 'OK'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                $('#name').focus();
+                            }
+                        });
+                    }
+
+                    localStorage.setItem('employees', JSON.stringify(employees));
+                    $('#employeeForm')[0].reset();
+                    $('#employeeId').val(`NEEV${employeeIdCounter}`);
+                    editingIndex = null;
+                    loadTable();
+                }
+            });
+        });
+
+        function loadTable() {
+            let table = $('#employeeTable');
+            table.empty();
+            let employees = JSON.parse(localStorage.getItem('employees')) || [];
+            employees.forEach((emp, index) => {
+                let row = `<tr>
+                    <td class="d-none d-md-table-cell"><a href="#" onclick="generatePDF('${emp.id}', '${emp.name}', '${emp.designation}', '${emp.basicSalary}', '${emp.netSalary}')">${emp.id}</a></td>
+                    <td class="d-table-cell md:text-base text-[10px]">${emp.name}</td>
+                    <td class="d-none d-md-table-cell">${emp.designation}</td>
+                    <td class="d-none d-md-table-cell">₹ ${emp.netSalary}</td>
+                    <td class="d-table-cell">
+                        <button class="btn btn-info btn-sm md:text-base text-[10px]" onclick="viewData('${emp.id}', '${emp.name}', '${emp.designation}', '${emp.basicSalary}', '${emp.netSalary}')"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-success btn-sm ms-2 md:text-base text-[10px]" onclick="printData('${emp.id}', '${emp.name}', '${emp.designation}', '${emp.basicSalary}', '${emp.netSalary}')"><i class="bi bi-printer"></i></button>
+                        <button class="btn btn-warning btn-sm ms-2 md:text-base text-[10px]" onclick="editData(${index})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-danger btn-sm ms-2 md:text-base text-[10px]" onclick="deleteData(${index}, '${emp.name}')"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-primary btn-sm ms-2 md:text-base text-[10px]" onclick="sendMail('${emp.id}', '${emp.name}', '${emp.designation}', '${emp.basicSalary}', '${emp.netSalary}')"><i class="bi bi-envelope"></i></button>
+                    </td>
+                </tr>`;
+                table.append(row);
+            });
+        }
+
+        let sentEmailCount = parseInt(localStorage.getItem('sentEmailCount')) || 0;
+
+        // Function to update the number in the red circle
+        function updateEmailCount() {
+            const emailButton = document.querySelector("#emailButton .email-count");
+            if (emailButton) {
+                emailButton.textContent = sentEmailCount;
+                emailButton.style.display = sentEmailCount > 0 ? 'block' : 'none';
+            }
+        }
+
+
+         // ✅ Ensure you use the correct public key from EmailJS dashboard
+        emailjs.init("Gl7hVTTjyx-_WTIdq");
+
+        function sendMail(id, name, designation, basicSalary, netSalary) {
+            Swal.fire({
+                title: 'Send Email',
+                input: 'email',
+                inputLabel: 'Enter recipient email',
+                inputPlaceholder: 'recipient@example.com',
+                showCancelButton: true,
+                confirmButtonText: 'Send',
+                cancelButtonText: 'Cancel',
+                preConfirm: (email) => {
+                    if (!email) {
+                        Swal.showValidationMessage('Please enter an email address');
+                    }
+                    return email;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const emailContent = `Employee Details:\nID: ${id}\nName: ${name}\nDesignation: ${designation}\nBasic Salary: ₹ ${basicSalary}\nNet Salary: ₹ ${netSalary}`;
+
+                    const templateParams = {
+                        to_email: result.value,
+                        subject: 'Employee Details',
+                        message: emailContent,
+                        id: id,
+                        name: name,
+                        designation: designation,
+                        basicSalary: basicSalary,
+                        netSalary: netSalary
+                    };
+
+                    // ✅ Pass the correct public key as the fourth parameter
+                    emailjs.send('service_531rcvn', 'template_9cmevnd', templateParams, "Gl7hVTTjyx-_WTIdq")
+                        .then((response) => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Email Sent!',
+                                text: `Email sent to ${result.value}`,
+                                confirmButtonText: 'OK'
+                            });
+                        }, (error) => {
+                            console.error('Error sending email:', error);  // Debugging
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: `There was a problem sending the email. Please try again later.\nError: ${error.text}`,
+                                confirmButtonText: 'OK'
+                            });
+                        });
+                }
+            });
+        }
+
+
+        function editData(index) {
+            let employees = JSON.parse(localStorage.getItem('employees')) || [];
+            let emp = employees[index];
+            $('#employeeId').val(emp.id);
+            $('#name').val(emp.name);
+            $('#designation').val(emp.designation);
+            $('#basicSalary').val(emp.basicSalary);
+            $('#netSalary').val(emp.netSalary);
+            editingIndex = index;
+        }
+
+        function viewData(id, name, designation, basicSalary, netSalary) {
+            // If popup is already showing, hide it
+            if ($('#popup').hasClass('show')) {
+                $('#popup').removeClass('show');
+                return;
+            }
+            
+            // Otherwise show popup with data
+            $('#popupId').text(id);
+            $('#popupName').text(name);
+            $('#popupDesignation').text(designation);
+            $('#popupBasicSalary').text(`₹ ${basicSalary}`);
+            $('#popupNetSalary').text(`₹ ${netSalary}`);
+            $('#popup').addClass('show');
+        }
+
+        function closePopup() {
+            $('#popup').removeClass('show');
+        }
+
+        function printData(id, name, designation, basicSalary, netSalary) {
+            let currentDate = new Date();
+            let formattedDate = currentDate.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            
+            let newWindow = window.open('', '', 'width=auto,height=auto');
+            newWindow.document.write(`
+                <div style="width: 80%; margin: auto; text-align: center; font-family: Arial, sans-serif; padding: 20px; border: 2px solid #000; border-radius: 10px;">
+                    <div style="font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 10px;">Bhavsar Neev Co.</div>
+                    <div style="font-size: 16px; text-align: center; margin-bottom: 20px;">123 Business Street, City, Country | Contact: +123 456 7890</div>
+                    <hr>
+                    <div style="font-size: 22px; font-weight: bold; text-align: right; margin-bottom: 15px;"><b>Employee ID:</b> ${id}</div>
+                    <div style="font-size: 18px; text-align: left; margin-bottom: 10px;"><b>Name:</b> ${name}</div>
+                    <div style="font-size: 18px; text-align: left; margin-bottom: 10px;"><b>Designation:</b> ${designation}</div>
+                    <div style="font-size: 18px; text-align: left; margin-bottom: 10px;"><b>Basic Salary:</b> ₹ ${basicSalary}</div>
+                    <div style="font-size: 18px; text-align: left; margin-bottom: 10px;"><b>Net Salary:</b> ₹ ${netSalary}</div>
+                    <hr>
+                    <div style="margin-top: 20px; font-size: 14px; text-align: center;">Printout generated on: ${formattedDate}</div>
+                </div>
+            `);
+            newWindow.document.close();
+            newWindow.print();
+        }
+
+        function deleteData(index, name) {
+            let employees = JSON.parse(localStorage.getItem('employees')) || [];
+            employees.splice(index, 1);
+            localStorage.setItem('employees', JSON.stringify(employees));
+            loadTable();
+            Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: `Entry for ${name} was deleted.`,
+                confirmButtonText: 'OK'
+            });
+        }
+
+        function resetEmployeeNumber() {
+            localStorage.setItem('employeeIdCounter', 101);
+            employeeIdCounter = 101;
+            document.getElementById('employeeId').value = `NEEV${employeeIdCounter}`;
+            Swal.fire({
+                icon: 'info',
+                title: 'Reset!',
+                text: 'Employee number reset to NEEV101',
+                confirmButtonText: 'OK'
+            });
+        }
+
+        function exportToCSV() {
+            let employees = JSON.parse(localStorage.getItem('employees')) || [];
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "ID,Name,Designation,Basic Salary,Net Salary\n";
+            employees.forEach(emp => {
+                csvContent += `${emp.id},${emp.name},${emp.designation},${emp.basicSalary},${emp.netSalary}\n`;
+            });
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "employees.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            Swal.fire({
+                icon: 'success',
+                title: 'Exported!',
+                text: 'Data exported to CSV successfully!',
+                confirmButtonText: 'OK'
+            });
+        }
+
+        function exportToPDF() {
+            let employees = JSON.parse(localStorage.getItem('employees')) || [];
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let currentDate = new Date();
+            let formattedDate = currentDate.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            doc.setFontSize(18);
+            doc.text("GamerzClan Vadodara", doc.internal.pageSize.getWidth() / 2, 10, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text("C-365 Emerald one Bs Gujarat Kidney Hospital Jetalpur, Vadodara, Gujarat, India", doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+            doc.line(10, 25, doc.internal.pageSize.getWidth() - 10, 25);
+
+            doc.autoTable({
+                startY: 30,
+                head: [['ID', 'Name', 'Designation', 'Basic Salary', 'Net Salary']],
+                body: employees.map(emp => [emp.id, emp.name, emp.designation, ` ${emp.basicSalary}`, ` ${emp.netSalary}`])
+            });
+
+            doc.text("Terms and Conditions", 10, doc.autoTable.previous.finalY + 10);
+            doc.text("1. All salaries are subject to applicable taxes and deductions.", 10, doc.autoTable.previous.finalY + 20);
+            doc.text("2. This document is confidential and intended for the recipient only.", 10, doc.autoTable.previous.finalY + 30);
+
+            doc.setFontSize(10);
+            doc.text(`ERP design by Bhavsar Neev`, 10, doc.internal.pageSize.getHeight() - 20);
+            doc.text(`Generated on: ${formattedDate}`, 10, doc.internal.pageSize.getHeight() - 10);
+
+            doc.save("employees.pdf");
+            Swal.fire({
+                icon: 'success',
+                title: 'Exported!',
+                text: 'Data exported to PDF successfully!',
+                confirmButtonText: 'OK'
+            });
+        }
+
+        let slideIndex = 0;
+        const slides = document.querySelectorAll('.image-slider img');
+        const totalSlides = slides.length;
+
+        function showSlides() {
+            gsap.to(slides[slideIndex], { duration: 1, left: '-100%' });
+            slideIndex = (slideIndex + 1) % totalSlides;
+            gsap.fromTo(slides[slideIndex], { left: '100%' }, { duration: 1, left: '0%' });
+        }
+
+        setInterval(showSlides, 2000);
+    </script>
+    <script type="text/javascript" src="https://cdn.emailjs.com/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <!-- Rest of the code remains the same -->
+    <!-- Keep all the existing popup, scripts and other elements -->
+
+
+    <style>
+        .animated-text {
+            display: inline-block;
+            animation: zoomFade 2s infinite;
+            margin-left: 10px;
+            color: red;
+            font-weight: bold;
+        }
+
+        @keyframes zoomFade {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.5;
+            }
+        }
+    </style>
+
+</body>
+</html>
